@@ -1,5 +1,3 @@
-¡Vamos a armar un README sólido y profesional para tu proyecto en C, Assassin! Este archivo explicará cómo compilar, ejecutar y limpiar el proyecto usando tu Makefile, además de incluir detalles sobre dependencias y estructura. Aquí tienes un ejemplo completo:
-
 ---
 
 ```markdown
