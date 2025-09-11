@@ -1,5 +1,3 @@
----
-
 ```markdown
 # 🏥 Proyecto Hospital CRUD en C
 
