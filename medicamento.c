@@ -4,7 +4,8 @@
 #include "database.h"
 #include "medicamento.h"
 
-void crear_medicamento() {
+void crear_medicamento()
+{
     char nombre[100], descrip[200], presentacion[50], fecha_caducidad[11];
     int stock;
 
@@ -22,11 +23,13 @@ void crear_medicamento() {
 
     printf("Fecha de caducidad (YYYY-MM-DD): ");
     scanf("%s", fecha_caducidad);
-    while(getchar() != '\n');
+    while (getchar() != '\n')
+        ;
 
     printf("Stock inicial: ");
     scanf("%d", &stock);
-    while(getchar() != '\n');
+    while (getchar() != '\n')
+        ;
 
     char consulta[500];
     snprintf(consulta, sizeof(consulta),
@@ -39,28 +42,31 @@ void crear_medicamento() {
         printf("Error: Verifique que la presentación sea válida y el stock no negativo.\n");
 }
 
-void listar_medicamentos() {
+void listar_medicamentos()
+{
     const char *consulta = "SELECT * FROM medicamento ORDER BY num_med";
     PGresult *res = ejecutar_consulta_con_resultado(consulta);
 
-    if (res == NULL) return;
+    if (res == NULL)
+        return;
 
     int rows = PQntuples(res);
     printf("\n=== LISTA DE MEDICAMENTOS ===\n");
-    for (int i = 0; i < rows; i++) {
+    for (int i = 0; i < rows; i++)
+    {
         printf("ID: %s, Nombre: %s, Presentación: %s, Caducidad: %s, Cantidad: %s\n",
-               PQgetvalue(res, i, 0), // num_med
-               PQgetvalue(res, i, 1), // nombre
-               PQgetvalue(res, i, 3), // presentacion
-               PQgetvalue(res, i, 4), // fecha_caducidad
+               PQgetvalue(res, i, 0),  // num_med
+               PQgetvalue(res, i, 1),  // nombre
+               PQgetvalue(res, i, 3),  // presentacion
+               PQgetvalue(res, i, 4),  // fecha_caducidad
                PQgetvalue(res, i, 5)); // cantidad
     }
-
 
     PQclear(res);
 }
 
-void buscar_medicamento() {
+void buscar_medicamento()
+{
     int id;
     printf("Ingrese el ID del medicamento a buscar: ");
     scanf("%d", &id);
@@ -70,9 +76,12 @@ void buscar_medicamento() {
 
     PGresult *res = ejecutar_consulta_con_resultado(consulta);
 
-    if (res == NULL || PQntuples(res) == 0) {
+    if (res == NULL || PQntuples(res) == 0)
+    {
         printf("Medicamento con ID %d no encontrado.\n", id);
-    } else {
+    }
+    else
+    {
         printf("\n=== MEDICAMENTO ENCONTRADO ===\n");
         printf("ID: %s, Nombre: %s, Descripción: %s\nPresentación: %s, Caducidad: %s, Cantidad: %s\n",
                PQgetvalue(res, 0, 0),
@@ -82,10 +91,12 @@ void buscar_medicamento() {
                PQgetvalue(res, 0, 4),
                PQgetvalue(res, 0, 5));
     }
-    if (res != NULL) PQclear(res);
+    if (res != NULL)
+        PQclear(res);
 }
 
-void actualizar_medicamento() {
+void actualizar_medicamento()
+{
     char num_med[10];
     printf("Ingrese el ID del medicamento a actualizar: ");
     fgets(num_med, sizeof(num_med), stdin);
@@ -96,15 +107,18 @@ void actualizar_medicamento() {
              "SELECT * FROM medicamento WHERE num_med = '%s'", num_med);
     PGresult *res_verificar = ejecutar_consulta_con_resultado(consulta_verificar);
 
-    if (res_verificar == NULL || PQntuples(res_verificar) == 0) {
+    if (res_verificar == NULL || PQntuples(res_verificar) == 0)
+    {
         printf("Medicamento con ID %s no encontrado.\n", num_med);
-        if (res_verificar != NULL) PQclear(res_verificar);
+        if (res_verificar != NULL)
+            PQclear(res_verificar);
         return;
     }
     PQclear(res_verificar);
 
     int opcion;
-    do {
+    do
+    {
         printf("\n--- Campos disponibles para actualizar ---\n");
         printf("1. Nombre\n");
         printf("2. Descripción\n");
@@ -114,83 +128,87 @@ void actualizar_medicamento() {
         printf("0. Salir\n");
         printf("Seleccione una opción: ");
         scanf("%d", &opcion);
-        while(getchar() != '\n');
+        while (getchar() != '\n')
+            ;
 
         char nuevo_valor[200];
         char consulta[500];
 
-        switch(opcion) {
-            case 1:
-                printf("Nuevo nombre: ");
-                fgets(nuevo_valor, sizeof(nuevo_valor), stdin);
-                nuevo_valor[strcspn(nuevo_valor, "\n")] = 0;
-                snprintf(consulta, sizeof(consulta),
-                         "UPDATE medicamento SET nombre = '%s' WHERE num_med = '%s'",
-                         nuevo_valor, num_med);
-                ejecutar_consulta(consulta);
-                printf("Nombre actualizado.\n");
-                break;
+        switch (opcion)
+        {
+        case 1:
+            printf("Nuevo nombre: ");
+            fgets(nuevo_valor, sizeof(nuevo_valor), stdin);
+            nuevo_valor[strcspn(nuevo_valor, "\n")] = 0;
+            snprintf(consulta, sizeof(consulta),
+                     "UPDATE medicamento SET nombre = '%s' WHERE num_med = '%s'",
+                     nuevo_valor, num_med);
+            ejecutar_consulta(consulta);
+            printf("Nombre actualizado.\n");
+            break;
 
-            case 2:
-                printf("Nueva descripción: ");
-                fgets(nuevo_valor, sizeof(nuevo_valor), stdin);
-                nuevo_valor[strcspn(nuevo_valor, "\n")] = 0;
-                snprintf(consulta, sizeof(consulta),
-                         "UPDATE medicamento SET descrip = '%s' WHERE num_med = '%s'",
-                         nuevo_valor, num_med);
-                ejecutar_consulta(consulta);
-                printf("Descripción actualizada.\n");
-                break;
+        case 2:
+            printf("Nueva descripción: ");
+            fgets(nuevo_valor, sizeof(nuevo_valor), stdin);
+            nuevo_valor[strcspn(nuevo_valor, "\n")] = 0;
+            snprintf(consulta, sizeof(consulta),
+                     "UPDATE medicamento SET descrip = '%s' WHERE num_med = '%s'",
+                     nuevo_valor, num_med);
+            ejecutar_consulta(consulta);
+            printf("Descripción actualizada.\n");
+            break;
 
-            case 3:
-                printf("Nueva presentación: ");
-                fgets(nuevo_valor, sizeof(nuevo_valor), stdin);
-                nuevo_valor[strcspn(nuevo_valor, "\n")] = 0;
-                snprintf(consulta, sizeof(consulta),
-                         "UPDATE medicamento SET presentacion = '%s' WHERE num_med = '%s'",
-                         nuevo_valor, num_med);
-                ejecutar_consulta(consulta);
-                printf("Presentación actualizada.\n");
-                break;
+        case 3:
+            printf("Nueva presentación: ");
+            fgets(nuevo_valor, sizeof(nuevo_valor), stdin);
+            nuevo_valor[strcspn(nuevo_valor, "\n")] = 0;
+            snprintf(consulta, sizeof(consulta),
+                     "UPDATE medicamento SET presentacion = '%s' WHERE num_med = '%s'",
+                     nuevo_valor, num_med);
+            ejecutar_consulta(consulta);
+            printf("Presentación actualizada.\n");
+            break;
 
-            case 4:
-                printf("Nueva fecha de caducidad (YYYY-MM-DD): ");
-                scanf("%s", nuevo_valor);
-                while(getchar() != '\n');
-                snprintf(consulta, sizeof(consulta),
-                         "UPDATE medicamento SET fecha_caducidad = '%s' WHERE num_med = '%s'",
-                         nuevo_valor, num_med);
-                if (ejecutar_consulta(consulta))
-                    printf("Fecha de caducidad actualizada.\n");
-                else
-                    printf("Error: La fecha debe ser futura.\n");
-                break;
+        case 4:
+            printf("Nueva fecha de caducidad (YYYY-MM-DD): ");
+            scanf("%s", nuevo_valor);
+            while (getchar() != '\n')
+                ;
+            snprintf(consulta, sizeof(consulta),
+                     "UPDATE medicamento SET fecha_caducidad = '%s' WHERE num_med = '%s'",
+                     nuevo_valor, num_med);
+            if (ejecutar_consulta(consulta))
+                printf("Fecha de caducidad actualizada.\n");
+            else
+                printf("Error: La fecha debe ser futura.\n");
+            break;
 
-            case 5:
-                printf("Nueva cantidad: ");
-                scanf("%s", nuevo_valor);
-                while(getchar() != '\n');
-                snprintf(consulta, sizeof(consulta),
-                         "UPDATE medicamento SET cantidad = %s WHERE num_med = '%s'",
-                         nuevo_valor, num_med);
-                if (ejecutar_consulta(consulta))
-                    printf("Cantidad actualizada.\n");
-                else
-                    printf("Error: Cantidad debe ser >= 0.\n");
-                break;
+        case 5:
+            printf("Nueva cantidad: ");
+            scanf("%s", nuevo_valor);
+            while (getchar() != '\n')
+                ;
+            snprintf(consulta, sizeof(consulta),
+                     "UPDATE medicamento SET cantidad = %s WHERE num_med = '%s'",
+                     nuevo_valor, num_med);
+            if (ejecutar_consulta(consulta))
+                printf("Cantidad actualizada.\n");
+            else
+                printf("Error: Cantidad debe ser >= 0.\n");
+            break;
 
-            case 0:
-                printf("Saliendo...\n");
-                break;
+        case 0:
+            printf("Saliendo...\n");
+            break;
 
-            default:
-                printf("Opción no válida.\n");
+        default:
+            printf("Opción no válida.\n");
         }
-    } while(opcion != 0);
+    } while (opcion != 0);
 }
 
-
-void eliminar_medicamento() {
+void eliminar_medicamento()
+{
     int id;
     printf("Ingrese el ID del medicamento a eliminar: ");
     scanf("%d", &id);
@@ -199,12 +217,234 @@ void eliminar_medicamento() {
     char confirm;
     scanf(" %c", &confirm);
 
-    if (confirm == 's' || confirm == 'S') {
+    if (confirm == 's' || confirm == 'S')
+    {
         char consulta[200];
         snprintf(consulta, sizeof(consulta), "DELETE FROM medicamento WHERE num_med << = %d", id);
         ejecutar_consulta(consulta);
         printf("Medicamento eliminado.\n");
-    } else {
+    }
+    else
+    {
         printf("Operación cancelada.\n");
     }
+}
+
+char *medicamento_to_string(PGresult *res, int row)
+{
+    static char resultado[512];
+    snprintf(resultado, sizeof(resultado),
+             "ID: %s, Nombre: %s, Descripción: %s, Presentación: %s, Caducidad: %s, Stock: %s",
+             PQgetvalue(res, row, 0),  // num_med
+             PQgetvalue(res, row, 1),  // nombre
+             PQgetvalue(res, row, 2),  // descrip
+             PQgetvalue(res, row, 3),  // presentacion
+             PQgetvalue(res, row, 4),  // fecha_caducidad
+             PQgetvalue(res, row, 5)); // stock
+    return resultado;
+}
+
+// Formato: "nombre|descripcion|presentacion|fecha_caducidad|stock"
+char *crear_medicamento_fifo(const char *datos)
+{
+    static char resultado[512];
+    char nombre[100], descrip[200], presentacion[50], fecha_caducidad[11];
+    int stock;
+
+    if (sscanf(datos, "%99[^|]|%199[^|]|%49[^|]|%10[^|]|%d",
+               nombre, descrip, presentacion, fecha_caducidad, &stock) != 5)
+    {
+        strcpy(resultado, "Error: Formato de datos inválido");
+        return resultado;
+    }
+
+    char consulta[500];
+    snprintf(consulta, sizeof(consulta),
+             "INSERT INTO medicamento (nombre, descrip, presentacion, fecha_caducidad, stock) "
+             "VALUES ('%s', '%s', '%s', '%s', %d)",
+             nombre, descrip, presentacion, fecha_caducidad, stock);
+
+    if (ejecutar_consulta(consulta) == 0)
+    {
+        snprintf(resultado, sizeof(resultado), "✅ Medicamento creado exitosamente: %s", nombre);
+    }
+    else
+    {
+        strcpy(resultado, "❌ Error al crear medicamento");
+    }
+
+    return resultado;
+}
+
+char *listar_medicamentos_fifo()
+{
+    static char resultado[2048];
+    resultado[0] = '\0';
+
+    const char *consulta = "SELECT * FROM medicamento ORDER BY num_med";
+    PGresult *res = ejecutar_consulta_con_resultado(consulta);
+
+    if (res == NULL)
+    {
+        strcpy(resultado, "Error al ejecutar consulta");
+        return resultado;
+    }
+
+    int rows = PQntuples(res);
+    if (rows == 0)
+    {
+        strcpy(resultado, "No hay medicamentos registrados");
+        PQclear(res);
+        return resultado;
+    }
+
+    snprintf(resultado, sizeof(resultado), "=== LISTA DE MEDICAMENTOS (%d registros) ===\n", rows);
+
+    for (int i = 0; i < rows; i++)
+    {
+        char linea[512];
+        char *medicamento_str = medicamento_to_string(res, i);
+        snprintf(linea, sizeof(linea), "%d. %s\n", i + 1, medicamento_str);
+
+        if (strlen(resultado) + strlen(linea) < sizeof(resultado) - 100)
+        {
+            strcat(resultado, linea);
+        }
+        else
+        {
+            strcat(resultado, "... (más registros omitidos)\n");
+            break;
+        }
+    }
+
+    PQclear(res);
+    return resultado;
+}
+
+char *buscar_medicamento_fifo(int num_med)
+{
+    static char resultado[512];
+
+    char consulta[200];
+    snprintf(consulta, sizeof(consulta), "SELECT * FROM medicamento WHERE num_med = %d", num_med);
+
+    PGresult *res = ejecutar_consulta_con_resultado(consulta);
+
+    if (res == NULL || PQntuples(res) == 0)
+    {
+        snprintf(resultado, sizeof(resultado), "❌ Medicamento con ID %d no encontrado", num_med);
+    }
+    else
+    {
+        char *medicamento_str = medicamento_to_string(res, 0);
+        snprintf(resultado, sizeof(resultado), "✅ MEDICAMENTO ENCONTRADO\n%s", medicamento_str);
+    }
+
+    if (res != NULL)
+        PQclear(res);
+    return resultado;
+}
+
+char *actualizar_medicamento_fifo(int num_med, int campo, const char *nuevo_valor)
+{
+    static char resultado[512];
+
+    char consulta_verificar[200];
+    snprintf(consulta_verificar, sizeof(consulta_verificar),
+             "SELECT * FROM medicamento WHERE num_med = %d", num_med);
+    PGresult *res_verificar = ejecutar_consulta_con_resultado(consulta_verificar);
+
+    if (res_verificar == NULL || PQntuples(res_verificar) == 0)
+    {
+        snprintf(resultado, sizeof(resultado), "❌ Medicamento con ID %d no encontrado", num_med);
+        if (res_verificar != NULL)
+            PQclear(res_verificar);
+        return resultado;
+    }
+    PQclear(res_verificar);
+
+    char consulta[1000];
+    const char *nombre_campo = "";
+
+    switch (campo)
+    {
+    case 1: // Nombre
+        nombre_campo = "nombre";
+        snprintf(consulta, sizeof(consulta),
+                 "UPDATE medicamento SET nombre = '%s' WHERE num_med = %d", nuevo_valor, num_med);
+        break;
+
+    case 2: // Descripción
+        nombre_campo = "descrip";
+        snprintf(consulta, sizeof(consulta),
+                 "UPDATE medicamento SET descrip = '%s' WHERE num_med = %d", nuevo_valor, num_med);
+        break;
+
+    case 3: // Presentación
+        nombre_campo = "presentacion";
+        snprintf(consulta, sizeof(consulta),
+                 "UPDATE medicamento SET presentacion = '%s' WHERE num_med = %d", nuevo_valor, num_med);
+        break;
+
+    case 4: // Fecha caducidad
+        nombre_campo = "fecha_caducidad";
+        snprintf(consulta, sizeof(consulta),
+                 "UPDATE medicamento SET fecha_caducidad = '%s' WHERE num_med = %d", nuevo_valor, num_med);
+        break;
+
+    case 5: // Stock
+        nombre_campo = "stock";
+        snprintf(consulta, sizeof(consulta),
+                 "UPDATE medicamento SET stock = %s WHERE num_med = %d", nuevo_valor, num_med);
+        break;
+
+    default:
+        strcpy(resultado, "❌ Campo inválido");
+        return resultado;
+    }
+
+    if (ejecutar_consulta(consulta) == 0)
+    {
+        snprintf(resultado, sizeof(resultado), "✅ Campo '%s' actualizado correctamente para medicamento ID %d",
+                 nombre_campo, num_med);
+    }
+    else
+    {
+        snprintf(resultado, sizeof(resultado), "❌ Error al actualizar campo '%s'", nombre_campo);
+    }
+
+    return resultado;
+}
+
+char *eliminar_medicamento_fifo(int num_med)
+{
+    static char resultado[512];
+
+    char consulta_verificar[200];
+    snprintf(consulta_verificar, sizeof(consulta_verificar),
+             "SELECT * FROM medicamento WHERE num_med = %d", num_med);
+    PGresult *res_verificar = ejecutar_consulta_con_resultado(consulta_verificar);
+
+    if (res_verificar == NULL || PQntuples(res_verificar) == 0)
+    {
+        snprintf(resultado, sizeof(resultado), "❌ Medicamento con ID %d no encontrado", num_med);
+        if (res_verificar != NULL)
+            PQclear(res_verificar);
+        return resultado;
+    }
+    PQclear(res_verificar);
+
+    char consulta[100];
+    snprintf(consulta, sizeof(consulta), "DELETE FROM medicamento WHERE num_med = %d", num_med);
+
+    if (ejecutar_consulta(consulta) == 0)
+    {
+        snprintf(resultado, sizeof(resultado), "✅ Medicamento con ID %d eliminado exitosamente", num_med);
+    }
+    else
+    {
+        snprintf(resultado, sizeof(resultado), "❌ Error al eliminar medicamento con ID %d", num_med);
+    }
+
+    return resultado;
 }
