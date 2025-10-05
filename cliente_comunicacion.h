@@ -13,16 +13,14 @@
 #define TAM_BUFFER 2048
 #define FIFO_SERVIDOR "/tmp/hospital_servidor"
 
-// Variables globales de comunicación
-extern int cliente_fifo_respuesta;
-extern char fifo_respuesta[50];
+// Variable global
 extern pid_t mi_pid;
 
 // Funciones de comunicación
 void manejar_senal(int sig);
 void enviar_comando(const char* comando);
-int esperar_respuesta_con_timeout(int timeout_sec);
-int esperar_respuesta_formateada(int timeout_sec, const char* tipo_formato);
+int operacion_segura(const char* comando, const char* tipo_formato);
+int operacion_simple(const char* comando);
 void inicializar_comunicacion();
 void limpiar_comunicacion();
 

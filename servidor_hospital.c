@@ -34,29 +34,14 @@ void manejar_senal(int sig) {
     exit(0);
 }
 
-void registrar_cliente(pid_t pid) {
-    if (num_clientes >= MAX_CLIENTES) {
-        printf("Número máximo de clientes alcanzado\n");
-        return;
-    }
-
-    snprintf(clientes[num_clientes].fifo_respuesta, 50, "/tmp/hospital_cliente_%d_respuesta", pid);
-    clientes[num_clientes].pid = pid;
-    num_clientes++;
-
-    printf("Cliente %d se ha conectado al sistema del hospital\n", pid);
-}
-
-void enviar_respuesta(pid_t pid, const char *respuesta) {
-    for (int i = 0; i < num_clientes; i++) {
-        if (clientes[i].pid == pid) {
-            int fd = open(clientes[i].fifo_respuesta, O_WRONLY | O_NONBLOCK);
-            if (fd != -1) {
-                write(fd, respuesta, strlen(respuesta) + 1);
-                close(fd);
-            }
-            break;
-        }
+// FUNCIÓN : acepta FIFO temporal como parámetro
+void enviar_respuesta(const char *fifo_respuesta, const char *respuesta) {
+    int fd = open(fifo_respuesta, O_WRONLY);
+    if (fd != -1) {
+        write(fd, respuesta, strlen(respuesta) + 1);
+        close(fd);
+    } else {
+        printf("❌ Error: No se pudo enviar respuesta al FIFO: %s\n", fifo_respuesta);
     }
 }
 
@@ -102,17 +87,18 @@ void mostrar_ayuda_completa() {
     printf("  Medicamentos: 1=Nombre, 2=Descripción, 3=Presentación, 4=Fecha Caducidad, 5=Stock\n");
 }
 
-void procesar_comando(pid_t pid, const char *comando_completo) {
+// FUNCIÓN : recibe el FIFO de respuesta como parámetro
+void procesar_comando(const char *fifo_respuesta, const char *comando_completo) {
     char comando[100];
     char parametros[900];
     
     // Separar comando y parámetros
     if (sscanf(comando_completo, "%99[^|]|%899[^\n]", comando, parametros) < 1) {
-        enviar_respuesta(pid, "❌ Error: Formato de comando inválido. Use 'ayuda' para ver comandos disponibles.");
+        enviar_respuesta(fifo_respuesta, "❌ Error: Formato de comando inválido. Use 'ayuda' para ver comandos disponibles.");
         return;
     }
     
-    printf("Procesando comando de cliente %d: %s\n", pid, comando);
+    printf("Procesando comando: %s\n", comando);
     
     char respuesta[TAM_BUFFER];
     respuesta[0] = '\0';
@@ -318,7 +304,7 @@ void procesar_comando(pid_t pid, const char *comando_completo) {
         strcpy(respuesta, "✅ Comando procesado correctamente");
     }
     
-    enviar_respuesta(pid, respuesta);
+    enviar_respuesta(fifo_respuesta, respuesta);
 }
 
 int main() {
@@ -358,24 +344,31 @@ int main() {
         
         if (bytes_leidos > 0) {
             pid_t pid;
+            char fifo_respuesta_temp[50];
             char comando[TAM_BUFFER];
             
-            if (sscanf(buffer, "%d|%1023[^\n]", &pid, comando) == 2) {
-                int cliente_registrado = 0;
+            // CAMBIO PRINCIPAL: Nuevo formato PID|FIFO_TEMP|COMANDO
+            if (sscanf(buffer, "%d|%49[^|]|%1023[^\n]", &pid, fifo_respuesta_temp, comando) == 3) {
+                printf("📨 Comando recibido de PID %d via FIFO: %s\n", pid, fifo_respuesta_temp);
+                procesar_comando(fifo_respuesta_temp, comando);
+            } 
+            // Compatibilidad con formato antiguo (por si acaso)
+            else if (sscanf(buffer, "%d|%1023[^\n]", &pid, comando) == 2) {
+                printf("⚠️  Formato antiguo detectado de PID %d\n", pid);
+                // Buscar FIFO del cliente registrado
+                int encontrado = 0;
                 for (int i = 0; i < num_clientes; i++) {
                     if (clientes[i].pid == pid) {
-                        cliente_registrado = 1;
+                        procesar_comando(clientes[i].fifo_respuesta, comando);
+                        encontrado = 1;
                         break;
                     }
                 }
-
-                if (!cliente_registrado) {
-                    registrar_cliente(pid);
+                if (!encontrado) {
+                    printf("❌ Cliente no registrado: %d\n", pid);
                 }
-
-                procesar_comando(pid, comando);
             } else {
-                printf("Error: No se pudo parsear el comando: %s\n", buffer);
+                printf("❌ Error: No se pudo parsear el comando: %s\n", buffer);
             }
         }
         close(fd_servidor);
