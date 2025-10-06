@@ -7,7 +7,7 @@
 #include <signal.h>
 #include <time.h>
 
-#define MAX_CLIENTES 10
+#define MAX_CLIENTES 2  // ✅ Límite REAL de clientes
 #define TAM_BUFFER 2048
 #define FIFO_SERVIDOR "/tmp/hospital_servidor"
 
@@ -21,20 +21,81 @@
 typedef struct {
     pid_t pid;
     char fifo_respuesta[50];
+    time_t ultima_conexion;  // ✅ Para limpieza de clientes inactivos
 } Cliente;
 
 Cliente clientes[MAX_CLIENTES];
 int num_clientes = 0;
 
+// ✅ FUNCIÓN: Buscar cliente por PID
+int buscar_cliente_por_pid(pid_t pid) {
+    for (int i = 0; i < num_clientes; i++) {
+        if (clientes[i].pid == pid) {
+            return i;  // Encontrado
+        }
+    }
+    return -1;  // No encontrado
+}
+
+// ✅ FUNCIÓN: Registrar nuevo cliente
+int registrar_cliente(pid_t pid, const char *fifo_respuesta) {
+    if (num_clientes >= MAX_CLIENTES) {
+        return -1;  // ❌ Límite alcanzado
+    }
+    
+    // Verificar si el cliente ya está registrado
+    if (buscar_cliente_por_pid(pid) != -1) {
+        return 0;  // ✅ Ya registrado, no hay problema
+    }
+    
+    // Registrar nuevo cliente
+    clientes[num_clientes].pid = pid;
+    strcpy(clientes[num_clientes].fifo_respuesta, fifo_respuesta);
+    clientes[num_clientes].ultima_conexion = time(NULL);
+    num_clientes++;
+    
+    printf("✅ Nuevo cliente registrado: PID %d (Total: %d/%d)\n", pid, num_clientes, MAX_CLIENTES);
+    return 1;  // ✅ Nuevo cliente registrado
+}
+
+// ✅ FUNCIÓN: Eliminar cliente (por desconexión)
+void eliminar_cliente(pid_t pid) {
+    int index = buscar_cliente_por_pid(pid);
+    if (index == -1) return;
+    
+    printf("🔌 Cliente desconectado: PID %d\n", pid);
+    
+    // Mover los clientes posteriores una posición hacia atrás
+    for (int i = index; i < num_clientes - 1; i++) {
+        clientes[i] = clientes[i + 1];
+    }
+    num_clientes--;
+    
+    printf("📊 Clientes conectados: %d/%d\n", num_clientes, MAX_CLIENTES);
+}
+
+// ✅ FUNCIÓN: Limpiar clientes inactivos
+void limpiar_clientes_inactivos() {
+    time_t ahora = time(NULL);
+    for (int i = num_clientes - 1; i >= 0; i--) {
+        // Si el cliente no se ha comunicado en 5 minutos, se considera desconectado
+        if (ahora - clientes[i].ultima_conexion > 300) {  // 300 segundos = 5 minutos
+            printf("🕒 Eliminando cliente inactivo: PID %d\n", clientes[i].pid);
+            eliminar_cliente(clientes[i].pid);
+        }
+    }
+}
+
 void manejar_senal(int sig) {
     (void)sig;
     printf("\nServidor del Hospital apagado.\n");
+    printf("📊 Clientes conectados al apagar: %d/%d\n", num_clientes, MAX_CLIENTES);
     desconectar_base_datos();
     unlink(FIFO_SERVIDOR);
     exit(0);
 }
 
-// FUNCIÓN : acepta FIFO temporal como parámetro
+// FUNCIÓN: acepta FIFO temporal como parámetro
 void enviar_respuesta(const char *fifo_respuesta, const char *respuesta) {
     int fd = open(fifo_respuesta, O_WRONLY);
     if (fd != -1) {
@@ -87,7 +148,7 @@ void mostrar_ayuda_completa() {
     printf("  Medicamentos: 1=Nombre, 2=Descripción, 3=Presentación, 4=Fecha Caducidad, 5=Stock\n");
 }
 
-// FUNCIÓN : recibe el FIFO de respuesta como parámetro
+// FUNCIÓN: recibe el FIFO de respuesta como parámetro
 void procesar_comando(const char *fifo_respuesta, const char *comando_completo) {
     char comando[100];
     char parametros[900];
@@ -317,6 +378,7 @@ int main() {
 
     printf("=== SERVICIO HOSPITAL - SERVIDOR INICIADO ===\n");
     printf("FIFO del servidor: %s\n", FIFO_SERVIDOR);
+    printf("🔒 Límite de clientes: %d\n", MAX_CLIENTES);
     
     // Conectar a la base de datos al iniciar
     printf("Conectando a la base de datos...\n");
@@ -347,31 +409,64 @@ int main() {
             char fifo_respuesta_temp[50];
             char comando[TAM_BUFFER];
             
-            // CAMBIO PRINCIPAL: Nuevo formato PID|FIFO_TEMP|COMANDO
+            // ✅ CAMBIO PRINCIPAL: Nuevo formato PID|FIFO_TEMP|COMANDO con control de clientes
             if (sscanf(buffer, "%d|%49[^|]|%1023[^\n]", &pid, fifo_respuesta_temp, comando) == 3) {
                 printf("📨 Comando recibido de PID %d via FIFO: %s\n", pid, fifo_respuesta_temp);
-                procesar_comando(fifo_respuesta_temp, comando);
-            } 
-            // Compatibilidad con formato antiguo (por si acaso)
-            else if (sscanf(buffer, "%d|%1023[^\n]", &pid, comando) == 2) {
-                printf("⚠️  Formato antiguo detectado de PID %d\n", pid);
-                // Buscar FIFO del cliente registrado
-                int encontrado = 0;
-                for (int i = 0; i < num_clientes; i++) {
-                    if (clientes[i].pid == pid) {
-                        procesar_comando(clientes[i].fifo_respuesta, comando);
-                        encontrado = 1;
-                        break;
+                
+                // ✅ VERIFICAR Y REGISTRAR CLIENTE
+                int resultado_registro = registrar_cliente(pid, fifo_respuesta_temp);
+                
+                if (resultado_registro == -1) {
+                    // ❌ LÍMITE DE CLIENTES ALCANZADO
+                    printf("❌ Límite de clientes alcanzado. Rechazando PID %d\n", pid);
+                    char respuesta_error[TAM_BUFFER];
+                    snprintf(respuesta_error, sizeof(respuesta_error),
+                             "❌ Servidor lleno. Límite de %d clientes alcanzado. Intente más tarde.", 
+                             MAX_CLIENTES);
+                    enviar_respuesta(fifo_respuesta_temp, respuesta_error);
+                } else {
+                    // ✅ CLIENTE ACEPTADO - Actualizar tiempo de conexión
+                    int index = buscar_cliente_por_pid(pid);
+                    if (index != -1) {
+                        clientes[index].ultima_conexion = time(NULL);
+                    }
+                    
+                    // Procesar el comando
+                    procesar_comando(fifo_respuesta_temp, comando);
+                    
+                    // ✅ Verificar si es comando de salida para eliminar cliente
+                    if (strncmp(comando, "salir", 5) == 0) {
+                        eliminar_cliente(pid);
                     }
                 }
-                if (!encontrado) {
+            } 
+            // ✅ Compatibilidad con formato antiguo (por si acaso)
+            else if (sscanf(buffer, "%d|%1023[^\n]", &pid, comando) == 2) {
+                printf("⚠️  Formato antiguo detectado de PID %d\n", pid);
+                int index = buscar_cliente_por_pid(pid);
+                if (index != -1) {
+                    clientes[index].ultima_conexion = time(NULL);
+                    procesar_comando(clientes[index].fifo_respuesta, comando);
+                    
+                    if (strncmp(comando, "salir", 5) == 0) {
+                        eliminar_cliente(pid);
+                    }
+                } else {
                     printf("❌ Cliente no registrado: %d\n", pid);
+                    // No respondemos porque no tenemos su FIFO
                 }
             } else {
                 printf("❌ Error: No se pudo parsear el comando: %s\n", buffer);
             }
         }
         close(fd_servidor);
+
+        // ✅ LIMPIAR CLIENTES INACTIVOS CADA 10 ITERACIONES
+        static int contador_limpieza = 0;
+        if (++contador_limpieza >= 10) {
+            limpiar_clientes_inactivos();
+            contador_limpieza = 0;
+        }
 
         // Pequeña pausa para no saturar la CPU
         struct timespec ts = {0, 100 * 1000000L}; // 100ms
